@@ -1,51 +1,80 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+val currentVersion: String by project
 
 plugins {
-	id("org.springframework.boot") version "3.1.2"
-	id("io.spring.dependency-management") version "1.1.2"
-	id("maven-publish")
-	kotlin("jvm") version "1.8.22"
-	kotlin("plugin.spring") version "1.8.22"
-}
-
-group = "com.polar"
-version = "0.0.1-SNAPSHOT"
-
-java {
-	sourceCompatibility = JavaVersion.VERSION_17
+	alias(libs.plugins.kotlin.jvm)
+	alias(libs.plugins.ktlint)
+	id("idea")
+	id("project-report")
+	alias(libs.plugins.kotlin.kapt)
 }
 
 repositories {
 	mavenCentral()
 }
 
+allprojects {
+	group = "com.polar"
+	version = currentVersion
+}
+
 dependencies {
-	implementation("org.springframework.boot:spring-boot-starter")
-	implementation("org.jetbrains.kotlin:kotlin-reflect")
-	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	implementation(kotlin("stdlib"))
 }
 
-tasks.withType<KotlinCompile> {
-	kotlinOptions {
-		freeCompilerArgs += "-Xjsr305=strict"
-		jvmTarget = "17"
-	}
-}
+subprojects {
+	val libs = rootProject.libs
+	apply(plugin = "org.jetbrains.kotlin.jvm")
+	apply(plugin = "java")
+	apply(plugin = "idea")
+	apply(plugin = "project-report")
+	apply(plugin = "maven-publish")
+	apply(plugin = "org.jetbrains.kotlin.kapt")
 
-tasks.withType<Test> {
-	useJUnitPlatform()
-}
-
-publishing {
 	repositories {
-		maven {
-			name = "GitHubPackages"
-			url = uri("https://maven.pkg.github.com/socar-polar/polar-common")
-			credentials {
-				username = System.getenv("COMMON_GITHUB_USERNAME")
-				password = System.getenv("COMMON_GITHUB_TOKEN")
+		mavenCentral()
+		gradlePluginPortal()
+	}
+
+	dependencies {
+		implementation(platform(libs.spring.boot.dependencies))
+		api(libs.bundles.kotlin.stdlib)
+	}
+
+	java {
+		sourceCompatibility = JavaVersion.VERSION_17
+		targetCompatibility = JavaVersion.VERSION_17
+		withSourcesJar()
+	}
+
+	tasks.compileKotlin {
+		kotlinOptions {
+			freeCompilerArgs = listOf("-Xjsr305=strict")
+			jvmTarget = "17"
+		}
+	}
+
+	tasks.compileTestKotlin {
+		kotlinOptions {
+			freeCompilerArgs = listOf("-Xjsr305=strict")
+			jvmTarget = "17"
+		}
+	}
+
+	configure<PublishingExtension> {
+		repositories {
+			maven {
+				name = "GitHubPackages"
+				url = uri("https://maven.pkg.github.com/socar-polar/common")
+				credentials {
+					username = System.getenv("COMMON_GITHUB_USERNAME")
+					password = System.getenv("COMMON_GITHUB_TOKEN")
+				}
+			}
+		}
+		publications {
+			create<MavenPublication>("mavenJava") {
+				from(components["java"])
 			}
 		}
 	}
 }
-
